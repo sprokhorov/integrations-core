@@ -7,6 +7,7 @@ from typing import Any, Callable, DefaultDict, Dict, Iterator, List, Optional, S
 
 from pyasn1.type.univ import OctetString
 from pysnmp import hlapi
+from pysnmp.hlapi.asyncore.cmdgen import lcd
 from pysnmp.smi import builder, view
 
 from datadog_checks.base import ConfigurationError, is_affirmative
@@ -163,6 +164,11 @@ class InstanceConfig:
 
         self._uptime_metric_added = False
 
+        if ip_address:
+            self._addr_name, _ = lcd.configure(
+                self._snmp_engine, self._auth_data, self._transport, self._context_data.contextName
+            )
+
     def resolve_oid(self, oid):
         # type: (Any) -> Tuple[Any, Any]
         return self._resolver.resolve_oid(oid)
@@ -189,10 +195,6 @@ class InstanceConfig:
             # NOTE: counter-intuitively, we must '.append()' the list of tag OIDs instead of '.extend()'ing,
             # because `.all_oids` is a list of lists of OIDs (batches).
             self.all_oids.append(tag_oids)
-
-    def call_cmd(self, cmd, *args, **kwargs):
-        # type: (Any, *Any, **Any) -> Iterator[Any]
-        return cmd(self._snmp_engine, self._auth_data, self._transport, self._context_data, *args, **kwargs)
 
     @staticmethod
     def create_snmp_engine(mibs_path):
